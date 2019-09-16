@@ -1,0 +1,477 @@
+---
+title: "Mediation Analysis"
+author: |
+  | Mark Andrews
+  | Psychology Department, Nottingham Trent University
+  | 
+  | \faEnvelopeO\  ```mark.andrews@ntu.ac.uk```
+fontsize: 10pt
+output:
+ beamer_presentation:
+  keep_tex: true
+  fonttheme: "serif"
+  includes:
+   in_header: preamble.tex
+---
+
+```{r setup, include=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(magrittr)
+library(knitr)
+library(pander)
+
+theme_set(theme_classic())
+set.seed(101010)
+
+```
+
+# Mediation
+
+* In a mediation model, the effect of one variable $x$ on another $y$ is due to its effect on a third variable $m$, which then affects $y$.
+
+* Changes in the variable $x$ lead to changes in $m$ that then lead to changes in $y$.
+
+* As an example of a mediation effect, it is widely appreciated that tobacco smoking $x$ raises the probability of lung cancer $y$, and that this effect is due to tar (tobacco residue) produced by the burning of the tobacco accumulating the lungs $m$. 
+
+# Pure mediation
+
+* In a *pure* or *full* mediation model, the effect of $x$ on $y$ is entirely due to its effect on $m$.
+
+\begin{center}
+\begin{tikzpicture}
+\tikzstyle{every path} = [-latex,thick]
+\tikzstyle{every node} = [circle, fill=gray!30]
+\node (x) at (0, 0) {$x$};
+\node (y) at (4, 0) {$y$};
+\node (m) at (2,0) {$m$};
+\draw (x) -- (m);
+\draw (m) -- (y); 
+\end{tikzpicture}
+\end{center}
+
+* Assuming that we are dealing with a normal linear model, we can write a pure mediation model as follows:
+\begin{align*}
+\text{for $i \ldots 1\ldots n$,}\quad y_i &\sim N(\mu^y_i, \sigma_y^2),
+\quad \mu^y_i = \beta_{y0} + \beta_{ym} m_i,\\
+m_i &\sim N(\mu^m_i, \sigma_m^2),
+\quad \mu^m_i = \beta_{m0} + \beta_{mx} x_i,
+\end{align*}
+
+
+# Partial mediation
+
+* In *partial mediation*, we assume that $x$ affects $m$ and $m$ affects $y$ as before, but there is also a direct effect of $x$ on $y$, as in the following diagram.
+
+\begin{center}
+\begin{tikzpicture}
+\tikzstyle{every path} = [-latex,thick]
+\tikzstyle{every node} = [circle, fill=gray!30]
+\node (x) at (0, 0) {$x$};
+\node (y) at (4, 0) {$y$};
+\node (m) at (2, 2) {$m$};
+\draw (x) -- (m);
+\draw (m) -- (y); 
+\draw (x) -- (y); 
+\end{tikzpicture}
+\end{center}
+
+* The partial mediation model can be written as follows.
+\begin{align*}
+\text{for $i \ldots 1\ldots n$,}\quad y_i &\sim N(\mu^y_i, \sigma_y^2),
+\quad \mu^y_i = \beta_{y0} + \beta_{ym} m_i + \beta_{yx} x_i,\\
+m_i &\sim N(\mu^m_i, \sigma_m^2),
+\quad \mu^m_i = \beta_{m0} + \beta_{mx} x_i,
+\end{align*}
+
+# Example 1
+
+* In order to explore mediation models, let us begin with data generated according to a specific model.
+```{r, echo=T}
+N <- 100
+
+b_m0 <- 1.25; b_mx <- 1.25; 
+b_y0 <- -0.5; b_ym <- 1.75; b_yx <- 0.75;
+sigma_m <- 1.5; sigma_y <- 2.0
+
+mediation_df <- tibble(
+  x = rnorm(N, sd = 2),
+  m = b_m0 + b_mx * x + rnorm(N, sd = sigma_m),
+  y = b_y0 + b_ym * m + b_yx * x + rnorm(N, sd = sigma_y)
+)
+```
+
+# Using `lavaan`
+
+* Let us now set up this model using `lavaan`.
+```{r, echo=T, message=F}
+library(lavaan)
+
+mediation_model_spec_1 <- '
+y ~ m + x
+m ~ x
+'
+```
+* For example, by writing `y ~ m`, we are assuming that for each $i$, $y_i = \beta_{y0} + \beta_{ym} m_i + \epsilon^y_i$.
+* However, by default, unless we explicitly state in the formula that we are using an intercept term, as follows, we will not get information about it. 
+```{r, echo=T}
+mediation_model_spec_1 <- '
+y ~ 1 + m + x
+m ~ 1 + x
+'
+```
+
+# Using `lavaan`
+
+* Now we call `lavaan::sem` with reference to `mediation_model_spec_1`, and this fits the model using maximum likelihood estimation.
+```{r, echo=T}
+mediation_model_1 <- sem(mediation_model_spec_1, 
+                         data = mediation_df)
+
+parameterEstimates(mediation_model_1)
+```
+
+# Model comparison 
+
+* In mediation analysis, a major aim is evaluating first whether there is evidence of a mediation of the effect of $x$ on $y$ by $m$, and then whether this is pure or partial mediation. 
+* To do so, we first specify and then fit the full mediation model`.
+```{r, echo=T}
+mediation_model_spec_0 <- '
+  y ~ 1 + m 
+  m ~ 1 + x
+'
+mediation_model_0 <- sem(mediation_model_spec_0, 
+                         data = mediation_df)
+
+mediation_models <- c(model_0 = mediation_model_0,
+                      model_1 = mediation_model_1)
+
+map_dbl(mediation_models, AIC)
+```
+```{r}
+stopifnot(AIC(mediation_model_1) < AIC(mediation_model_0))
+```
+
+# Alternative models: 1 to 4
+
+\begin{figure}  
+\centering  
+
+\subfigure[]  
+{  
+\begin{tikzpicture}[show background rectangle]
+\tikzstyle{every node} = [circle, fill=gray!30]
+\tikzstyle{every path} = [-latex,thick]
+\node (x) at (0, 0) {$x$};
+\node (y) at (4, 0) {$y$};
+\node (m) at (2, 2) {$m$};
+\end{tikzpicture}
+}  
+\subfigure[]  
+{  
+\begin{tikzpicture}[show background rectangle]
+\tikzstyle{every node} = [circle, fill=gray!30]
+\tikzstyle{every path} = [-latex,thick]
+\node (x) at (0, 0) {$x$};
+\node (y) at (4, 0) {$y$};
+\node (m) at (2, 2) {$m$};
+\draw (x) -- (m);
+\end{tikzpicture}
+}
+\subfigure[]  
+{  
+\begin{tikzpicture}[show background rectangle]
+\tikzstyle{every node} = [circle, fill=gray!30]
+\tikzstyle{every path} = [-latex,thick]
+\node (x) at (0, 0) {$x$};
+\node (y) at (4, 0) {$y$};
+\node (m) at (2, 2) {$m$};
+\draw (m) -- (y); 
+\end{tikzpicture}
+}
+\subfigure[]  
+{  
+\begin{tikzpicture}[show background rectangle]
+\tikzstyle{every node} = [circle, fill=gray!30]
+\tikzstyle{every path} = [-latex,thick]
+\node (x) at (0, 0) {$x$};
+\node (y) at (4, 0) {$y$};
+\node (m) at (2, 2) {$m$};
+\draw (x) -- (y); 
+\end{tikzpicture}
+}
+
+\end{figure}
+
+# Alternative models: 5 to 8
+
+
+\begin{figure}  
+\centering  
+
+\subfigure[]  
+{  
+\begin{tikzpicture}[show background rectangle]
+\tikzstyle{every node} = [circle, fill=gray!30]
+\tikzstyle{every path} = [-latex,thick]
+\node (x) at (0, 0) {$x$};
+\node (y) at (4, 0) {$y$};
+\node (m) at (2, 2) {$m$};
+\draw (x) -- (m);
+\draw (m) -- (y); 
+\end{tikzpicture}
+}
+\subfigure[]  
+{  
+\begin{tikzpicture}[show background rectangle]
+\tikzstyle{every node} = [circle, fill=gray!30]
+\tikzstyle{every path} = [-latex,thick]
+\node (x) at (0, 0) {$x$};
+\node (y) at (4, 0) {$y$};
+\node (m) at (2, 2) {$m$};
+\draw (x) -- (m);
+\draw (x) -- (y); 
+\end{tikzpicture}
+}
+\subfigure[]  
+{  
+\begin{tikzpicture}[show background rectangle]
+\tikzstyle{every node} = [circle, fill=gray!30]
+\tikzstyle{every path} = [-latex,thick]
+\node (x) at (0, 0) {$x$};
+\node (y) at (4, 0) {$y$};
+\node (m) at (2, 2) {$m$};
+\draw (m) -- (y);
+\draw (x) -- (y); 
+\end{tikzpicture}
+}
+\subfigure[]  
+{  
+\begin{tikzpicture}[show background rectangle]
+\tikzstyle{every node} = [circle, fill=gray!30]
+\tikzstyle{every path} = [-latex,thick]
+\node (x) at (0, 0) {$x$};
+\node (y) at (4, 0) {$y$};
+\node (m) at (2, 2) {$m$};
+\draw (x) -- (m);
+\draw (m) -- (y); 
+\draw (x) -- (y); 
+\end{tikzpicture}
+}
+\end{figure}
+
+# Model evalation
+
+*  Read alternative models specifications from file:
+
+```{r, echo=T}
+source('mediation_models_specs.R')
+```
+
+* Having each model specified as an element of a list, we now use `purrr::map` to fit each model and calculate its \aic score.
+```{r, echo=T}
+mediation_models <- map(mediation_models_specs,
+                        ~sem(., data = mediation_df)
+)
+
+map_dbl(mediation_models, AIC) %>% 
+  sort()
+```
+
+# Model evaluation
+
+* Let us now generate some data from a pure mediation model, and then fit all 8 possible versions of the mediation model to the data, and evaluate the fit.
+```{r, echo=T}
+mediation_df_new <- tibble(
+  x = rnorm(N, sd = 2),
+  m = b_m0 + b_mx * x + rnorm(N, sd = sigma_m),
+  y = b_y0 + b_ym * m + rnorm(N, sd = sigma_y)
+)
+
+mediation_models_new <- map(mediation_models_specs,
+                            ~sem(., data = mediation_df_new)
+)
+
+map_dbl(mediation_models_new, AIC) %>% 
+  sort()
+```
+
+
+# Direct versus indirect effects
+
+* In a standard linear regression model of the following kind
+$$
+y_i \sim N(\mu_i, \sigma^2),\quad \mu_i = \beta_0 + \beta_1 x_i,\quad \text{$i \in 1 \ldots n$},
+$$
+a change in any $x_{i}$ by 1 unit, i.e., $x_{i} + 1$, would always lead to a change of $\beta_1$ in the expected, i.e. the average, value of the outcome variable.
+* This is easy to see. Let $x^\prime_{i} = x_{i} + 1$, and 
+\begin{align*}
+\mu_i = \beta_0 + \beta_1 x_{i},\quad \mu_i^\prime &= \beta_0 + \beta_1 x_{i}^\prime,\\
+             &= \beta_0 + \beta_1 (x_{i} + 1),\\
+             &= \beta_0 + \beta_1 x_{i} + \beta_1,\\
+             &= \mu_i + \beta_1,
+\end{align*}
+and so $\mu^\prime - \mu = \beta_1$.
+* Regardless of how many predictor variables there are in the linear regression, a change in predictor $k$ by one unit, always leads to a change $\beta_k$ in the average value of the outcome variable.
+
+# Direct versus indirect effects
+
+
+* In a mediation model, the effect of a change in the predictor $x$ on the outcome $y$ is not as simple. 
+* In pure mediation model, we can write each $y_i$ and $m_i$ as follows 
+\begin{align*}
+y_i &= \beta_{y0} + \beta_{ym} m_i + \epsilon^y_i, \quad \epsilon^y_i \sim N(0, \sigma_y^2),\\
+m_i &= \beta_{m0} + \beta_{mx} x_i + \epsilon^m_i, \quad \epsilon^m_i \sim N(0, \sigma_m^2).
+\end{align*}
+From this, we have 
+\begin{align*}
+y_i &= \beta_{y0} + \beta_{ym} \left(\beta_{m0} + \beta_{mx} x_i +  \epsilon^m_i \right) + \epsilon^y_i,\\
+    &= \beta_{y0} + \beta_{ym} \beta_{m0} + \beta_{ym} \beta_{mx} x_i +  \beta_{ym} \epsilon^m_i + \epsilon^y_i,
+\end{align*}
+and this entails
+$$
+y_i \sim N(\mu_i, \beta_{ym}^2\sigma^2_m + \sigma^2_y),\quad
+\mu_i = \beta_{y0} + \beta_{ym} \beta_{m0} + \beta_{ym} \beta_{mx} x_i. 
+$$
+* Following the same reasoning as above for the case of standard linear regression, this entails that in a pure mediation model a unit change in $x_i$ leads to a change of $\beta_{ym}\beta_{mx}$ in the expected value of $y$.
+
+# Direct versus indirect effects
+
+* In the case of the partial mediation model, we saw already that each $y_i$ and $m_i$ in the model can be defined as follows:
+\begin{align*}
+y_i &= \beta_{y0} + \beta_{ym} m_i + \beta_{yx} x_i + \epsilon^y_i,
+\quad \epsilon^y_i \sim N(0, \sigma_y^2),\\
+m_i &= \beta_{m0} + \beta_{mx} x_i +  \epsilon^m_i,
+\quad \epsilon^m_i \sim N(0, \sigma_m^2).
+\end{align*}
+From this, we have 
+\begin{align*}
+y_i &= \beta_{y0} + \beta_{ym} (\beta_{m0} + \beta_{mx} x_i +  \epsilon^m_i) + \beta_{yx} x_i + \epsilon^y_i,\\
+y_i &= \beta_{y0} + \beta_{ym}\beta_{m0} + \beta_{ym}\beta_{mx} x_i + \beta_{yx} x_i + \beta_{ym}\epsilon^m_i  + \epsilon^y_i,
+\end{align*}
+which entails
+$$
+y_i \sim N(\mu_i, \beta_{ym}^2\sigma^2_m + \sigma^2_y),\quad
+\mu_i = \beta_{y0} + \beta_{ym}\beta_{m0} + \left(\beta_{ym}\beta_{mx} + \beta_{yx}\right) x_i,
+$$
+and following the reasoning above, this entails that unit change in $x_i$ leads to a change of $(\beta_{ym}\beta_{mx} + \beta_{yx})$ in the expected values of $y_i$.
+
+
+# Direct versus indirect effects
+
+In general in a mediation model, we have following:
+$$
+\underbrace{
+  \overbrace{
+    \beta_{ym}\beta_{mx}
+    }^{\text{indirect effect}} 
+    + 
+  \overbrace{
+    \beta_{yx}
+    }^{\text{direct effect}}
+  }_{\text{total effect}}.
+$$
+If there is no direct effect, as would be the case in pure mediation model, then the total effect is equal to the indirect effect.
+
+
+# Direct versus indirect effects
+
+* In a `lavaan` mediation model, we can create single variables that measure the direct, indirect and total effects. 
+*To do so, we must first use labels for our original parameters, i.e. the coefficients, and then use the `:=` operator to create new variables that are functions of the original parameters.
+```{r, echo=T}
+mediation_model_spec_1 <- '
+y ~ 1 + b_ym * m + b_yx * x
+m ~ 1 + b_mx * x
+
+# Define effects
+indirect := b_ym * b_mx
+direct   := b_yx
+total    := b_yx + (b_ym * b_mx)
+'
+```
+
+# Direct versus indirect effects
+
+* We can fit this model as per usual.
+```{r, echo=T}
+mediation_model_1 <- sem(mediation_model_spec_1,
+                         data = mediation_df)
+```
+In the usual parameter estimates output, we can use `dplyr::filter` to isolate these effects:
+```{r, echo=T}
+parameterEstimates(mediation_model_1) %>% 
+  filter(label %in% c('indirect', 'direct', 'total')) %>% 
+  select(label, est,pvalue:ci.upper)
+```
+```{r}
+total_eff <- parameterEstimates(mediation_model_1) %>% 
+  filter(label == 'total') %>% 
+  select(est, starts_with('ci')) %>% 
+  unlist() %>% 
+  round(digits = 3)
+```
+As we can see, for example, the estimated effect for the total effect is `r total_eff['est']`, and the 95% confidence interval on this effect is $(`r total_eff['ci.lower'] `,`r total_eff['ci.upper']`)$.
+
+# Modelling Graduate School Performance
+
+\begin{figure}
+\centering
+\subfigure[]
+{
+\begin{tikzpicture}
+\tikzstyle{every node} = [rectangle, fill=gray!30]
+\tikzstyle{every path} = [-latex,thick]
+\node (col) at (0, 0) {\texttt{col}};
+\node (hs) at (0, 2) {\texttt{hs}};
+\node (gre) at (2, 1) {\texttt{gre}};
+\node (grad) at (4, 1) {\texttt{grad}};
+\draw (hs) -- (gre);
+\draw (col) -- (gre);
+\draw (gre) -- (grad);
+\draw (hs) to [bend left=30] (grad);
+\draw [latex'-latex'] (hs) to (col);
+\draw[-,draw opacity=0.0] (col) to [bend right=30] (grad);
+\end{tikzpicture}
+}
+\hspace{2cm}
+\subfigure[]
+{
+\begin{tikzpicture}
+\tikzstyle{every node} = [rectangle, fill=gray!30]
+\tikzstyle{every path} = [-latex,thick]
+\node (col) at (0, 0) {\texttt{col}};
+\node (hs) at (0, 2) {\texttt{hs}};
+\node (gre) at (2, 1) {\texttt{gre}};
+\node (grad) at (4, 1) {\texttt{grad}};
+\draw (hs) -- (gre);
+\draw (col) -- (gre);
+\draw (gre) -- (grad);
+\draw [latex'-latex'] (hs) to (col);
+\draw (hs) to [bend left=30] (grad);
+\draw (col) to [bend right=30] (grad);
+\end{tikzpicture}
+}
+\end{figure}
+
+
+# Modelling Graduate School Performance
+
+```{r, echo=T}
+grad_mediation_models_specs <- within(list(),{
+  model_0 <- '
+      grad ~ hs + gre
+      gre ~ hs + col
+  '
+
+  model_1 <- '
+      grad ~ hs + b_grad_gre*gre + b_grad_col*col
+      gre ~ hs + b_gre_col*col
+      
+      # labels for indirect, direct, and total
+      direct := b_grad_col
+      indirect := b_gre_col*b_grad_gre
+      total := b_grad_col + (b_gre_col*b_grad_gre)
+'
+})
+
+```
