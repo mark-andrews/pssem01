@@ -1,0 +1,101 @@
+---
+title: "Structural Equation Models"
+author: |
+  | Mark Andrews
+  | Psychology Department, Nottingham Trent University
+  | 
+  | \faEnvelopeO\  ```mark.andrews@ntu.ac.uk```
+fontsize: 10pt
+output:
+ beamer_presentation:
+  keep_tex: true
+  fonttheme: "serif"
+  includes:
+   in_header: preamble.tex
+---
+
+```{r, echo=F}
+knitr::opts_chunk$set(echo = F, prompt = F, warning = F, message = F, comment='#>')
+# Thanks to 
+# https://github.com/ramnathv/slidify/issues/189#issuecomment-15850008
+hook1 <- function(x){ gsub("```\n*```r*\n*", "", x) }
+hook2 <- function(x){ gsub("```\n+```\n", "", x) }
+knitr::knit_hooks$set(document = hook1)
+```
+
+```{r}
+library(tidyverse)
+library(magrittr)
+library(modelr)
+theme_set(theme_classic())
+```
+
+# What are Structural Equation Models?
+
+* Structural equation models (\sem) are 
+
+  1. Systems of statistical regression models \ldots
+  1. \ldots that represent hypothetical causal models.
+  
+* As regression models, they generally include *latent* variables.
+
+* Path analysis and \sem can be seen as either identical, or \sem can be seen as path analysis with additional latent variables.
+
+# A very brief history
+
+* \sem began with the path analysis work of biologist Sewall Wright around 1920.
+* \sem became more widely used from 1970s onwards, but the focus became centred on algorithms and computer implementation, the peculiarities or linear-normal models, and the causal interpretation of \sem was downplayed or eschewed. 
+* Since 2000s, \sem has become increasingly associated with *causal graph theory* (see J. Pearl), and no longer focused on linear-normal models.
+
+# \sem & \xdag 
+
+* A \sem model can be represented by a *directed acyclic graph* (\xdag), where vertices represent variables and directed edges represent causal relationships
+
+* For example, 
+
+\begin{center}
+\begin{tikzpicture}
+\tikzstyle{every path} = [-latex,thick]
+\tikzstyle{every node} = [rectangle, fill=gray!30]
+\node (x) at (0, 0) {$x$};
+\node (y) at (2, 0) {$y$};
+\node (m) at (1, 1) {$m$};
+\node (z) at (1, 2) {$z$};
+\draw (x) -- (y);
+\draw (x) -- (m);
+\draw (m) -- (y);
+\draw (z) to [bend right=30] (x);
+\draw (z) to [bend left=30] (y);
+\draw (z) -- (m);
+\end{tikzpicture}
+\end{center}
+
+
+
+* For example, we interpret the following to mean that $x$ causes $y$:
+
+\begin{center}
+\begin{tikzpicture}
+\tikzstyle{every path} = [-latex,thick]
+\tikzstyle{every node} = [rectangle, fill=gray!30]
+\node (x) at (0, 0) {$x$};
+\node (y) at (1, 0) {$y$};
+\draw (x) -- (y);
+\end{tikzpicture}
+\end{center}
+
+# Regression models and \textsc{dag}s
+
+* Any regression model, or probabilistic model, can be represented by a \xdag.
+* All variables, including parameters, are represented by vertices and directed edges represent conditional statistical dependence.
+* A sem is often represented by a *nonparametric* \xdag, i.e., where the parameters and functional form of the regression model are not represented.
+* Crucially, directed edges represent causal relationships.
+
+# Overview of course
+
+* Regression models
+* Mediation models, including causal mediation
+* Latent variable models
+* \sem with `lavaan` and `blavaan`
+* \sem with `stan`, `brms`, etc.
+
