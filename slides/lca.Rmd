@@ -313,3 +313,106 @@ tibble(x = seq(0, n),
 
 -   In other words, $\lambda_i$ is modelled just as in ordinary Poisson
     regression and $\theta_i$ is modelled in logistic regression.
+
+
+
+# Ordinary Poisson
+
+- Here we use a Poisson regression model to predict smoking frequency as function of
+  education level.
+```{r, echo=TRUE}
+Df <- read_csv('../data/smoking.csv')
+
+M <- glm(cigs ~ educ, family = poisson, data=Df)
+```
+```{r}
+summary(M)$coefficients
+coefs <- M$coefficients
+intercept <- round(coefs['(Intercept)'], 3)
+slope <- round(coefs['educ'], 3)
+```
+
+
+# Ordinary Poisson
+```{r}
+x_1 <- 6
+x_2 <- 18
+```
+
+-   The role of education according to the Poisson model is
+    $$
+    \lambda = e^{`r intercept` + `r slope` x_i}.
+    $$
+    So, for $x_i=`r x_1`$,
+    $$\lambda = e^{`r intercept` + `r slope * x_1`} = \lambda = e^{`r intercept + slope * x_1`} = `r round(exp(intercept + slope*x_1), 3)`,$$
+    and for $x_i=`r x_2`$,
+    $$\lambda = e^{`r intercept` + `r slope * x_2`} = \lambda = e^{`r intercept + slope * x_2`} = `r round(exp(intercept + slope*x_2), 3)`,$$
+
+# Zero-inflated Poisson
+
+```{r, echo=T}
+library(pscl)
+M <- zeroinfl(cigs ~ educ, data=Df)
+```
+- The coefficients for the (non-zero) Poisson model.
+```{r}
+summary(M)$coefficients$count
+
+coefs <- M$coefficients$count
+intercept_count <- round(coefs['(Intercept)'], 3)
+slope_count <- round(coefs['educ'], 3)
+
+```
+- The coefficients for the logistic regression predicting the zero component.
+```{r}
+summary(M)$coefficients$zero
+
+coefs <- M$coefficients$zero
+intercept_zero <- round(coefs['(Intercept)'], 3)
+slope_zero <- round(coefs['educ'], 3)
+
+ilogit <- function(x) {1/(1 + exp(-x))}
+
+```
+
+
+# Zero-inflated Poisson
+
+-   The zero-inflated Poisson provides us first with the probability of
+    the zero-model as 
+    $$\theta_i = \frac{1}{1+e^{-(`r intercept_zero` + `r slope_zero` x_i)}},$$
+    so, for $x_i=`r x_1`$,
+    $$\theta_i = \frac{1}{1+e^{-(`r intercept_zero` + `r slope_zero * x_1`)}} = `r round(ilogit(intercept_zero + slope_zero * x_1), 3)`$$
+    and for $x_i=`r x_2`$,
+    $$\theta_i = \frac{1}{1+e^{-(`r intercept_zero` + `r slope_zero * x_2`)}} = `r round(ilogit(intercept_zero + slope_zero * x_2), 3)`$$
+
+# Zero-inflated Poisson
+
+-   The role of education according to the Poisson component of the
+    zero-inflated Poisson model is $$
+    \lambda = e^{`r intercept_count` + `r slope_count` \cdot x_i}.
+    $$
+    So, for $x_i=`r x_1`$,
+    $$\lambda = e^{`r intercept_count` + `r slope_count * x_1`} =  `r round(exp(intercept_count + slope_count * x_1), 3)`,$$
+    and for $x_i= `r x_2`$,
+    $$\lambda = e^{`r intercept_count` + `r slope_count * x_2`} =  `r round(exp(intercept_count + slope_count * x_2), 3)`,$$
+
+-   There is a substantial increase in smoking with education level.
+
+# Zero-inflated Poisson
+
+-   The expected number of cigarettes smoked by, for example, a person
+    with `r x_2` years of education is obtained by calculating the expected
+    number according to the non-zero Poisson component 
+    and multiplying this by the probability of choosing this component.
+
+-   The expected number of cigarettes according to the Poisson component
+    is `r round(exp(intercept_count + slope_count * x_2), 3)`.
+
+-   The probability of choosing this component is $1 - `r round(ilogit(intercept_zero + slope_zero * x_2), 3)` = `r 1 - round(ilogit(intercept_zero + slope_zero * x_2), 3)`$.
+
+-   Therefore, the expected number is 
+    $`r round(exp(intercept_count + slope_count * x_2), 3)` \times `r 1 - round(ilogit(intercept_zero + slope_zero * x_2), 3)` = `r  round(round(exp(intercept_count + slope_count * x_2), 3) * (1 - round(ilogit(intercept_zero + slope_zero * x_2), 3)),3)`$.
+
+-   Using similar procedure for the person with 6 years of education,
+    the expected number of cigarettes is   $`r round(exp(intercept_count + slope_count * x_1), 3)` \times `r 1 - round(ilogit(intercept_zero + slope_zero * x_1), 3)` = `r  round(round(exp(intercept_count + slope_count * x_1), 3) * (1 - round(ilogit(intercept_zero + slope_zero * x_1), 3)),3)`$.
