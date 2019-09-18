@@ -128,7 +128,7 @@ $\pi_3$ gives the probability that the latent's class's value is class 3.
   - $\mu_3$, $\sigma^2_3$: The parameters of component distribution 2.
   - $\pi_1, \pi_2, \pi_3$: The relative probabilities of each component. 
   
-- In addition, we have the probability distribution over each value $x_1, x_2 \ldots x_n$.
+- In addition, we have the probability distribution over each value $z_1, z_2 \ldots z_n$.
 
 - Inferring these values by maximum likelihood estimation is usually done by the *expectation-maximization* algorithm. 
 
