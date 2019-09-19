@@ -1,0 +1,281 @@
+---
+title: "Causal models"
+author: |
+  | Mark Andrews
+  | Psychology Department, Nottingham Trent University
+  | 
+  | \faEnvelopeO\  ```mark.andrews@ntu.ac.uk```
+fontsize: 10pt
+output:
+ beamer_presentation:
+  keep_tex: true
+  fonttheme: "serif"
+  includes:
+   in_header: preamble.tex
+---
+
+```{r setup, include=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(magrittr)
+library(knitr)
+library(pander)
+
+theme_set(theme_classic())
+set.seed(101010)
+
+```
+
+# Causal \xdag
+
+* A causal \xdag is a \xdag: A graph with vertices representing variables, and directed edges between the vertices and contain no cycles.
+* It represents the causal relationships between variables: If one variable $x$ causes another $y$, we write $x \to y$.
+* The absence of an direct edge between $x$ and $y$ indicates no *direct* effect of $x$ on $y$.
+* The absence of directed edg between variables is as or more informative than the presence of directed edge.
+* A causal \xdag must have all relevant variables, all explanatory and outcome variables and *all their common causes*.
+
+# Causal \xdag
+
+* A causal \xdag contains three key structures:
+
+  * Chains
+  * Forks
+  * Colliders
+  
+# Chains
+
+* Chains encode causal chains.
+
+  \begin{tikzpicture}
+  \tikzstyle{every path} = [-latex,thick]
+  \tikzstyle{every node} = [circle, fill=gray!30]
+  \node (x) at (0, 0) {$x$};
+  \node (z) at (1, 1) {$z$};
+  \node (y) at (2, 0) {$y$};
+  \draw (x) -- (z);
+  \draw (z) -- (y); 
+  \end{tikzpicture}
+  
+* Controlling for or blocking $z$ blocks the causal effect of $x$ on $y$.
+
+# Forks
+
+* Forks indicate confounders or spurious correlations.
+  
+  \begin{tikzpicture}
+  \tikzstyle{every path} = [-latex,thick]
+  \tikzstyle{every node} = [circle, fill=gray!30]
+  \node (x) at (0, 0) {$x$};
+  \node (y) at (2, 0) {$y$};
+  \node (z) at (1, 1) {$z$};
+  \draw (z) -- (x);
+  \draw (z) -- (y); 
+  \end{tikzpicture}
+  
+* Controlling for or blocking $z$ deconfounds the spurious correlation between $x$ and $y$.
+  
+# Colliders
+    
+* Colliders encode *endogenous associations*.
+
+  \begin{tikzpicture}
+  \tikzstyle{every path} = [-latex,thick]
+  \tikzstyle{every node} = [circle, fill=gray!30]
+  \node (x) at (0, 1) {$x$};
+  \node (z) at (1, 0) {$z$};
+  \node (y) at (2, 1) {$y$};
+  \draw (x) -- (z);
+  \draw (y) -- (z); 
+  \end{tikzpicture}
+  
+* Controlling for or blocking $z$ *creates* a spurious correlation between $x$ and $y$.
+
+# d-separation
+
+* Two variables $x$ and $y$ in a causal \xdag are d-separated by $z$ if they are conditionally independent, conditional on $z$. 
+* We write this as follows:
+$$
+x \CI y \given z
+$$
+* If two variables are conditionally independent, they will have a partial correlation of zero.
+* In general, we can have sets of variables being d-separated by set of other variables.
+* Every causal \xdag leads to list of d-separations. 
+* Each d-separation is a testable hypothesis.
+* The minimal set of d-separations (i.e. from which all others are derived) is the *basis set*.
+
+# d-separation: Alternative definitions
+
+* Two variables $x$ and $y$ are d-separated given $z$ iff *each* path from $x$ to $y$ is d-separated by $z$.
+
+* A path is d-separated by $z$ iff any of the following hold.
+
+  * The path contains a chain $x \rightarrow z \rightarrow y$ or $x \leftarrow z \leftarrow y$.
+  * The path contains a fork $x \leftarrow z \rightarrow y$.
+  * The path contains a collider $x \rightarrow m \leftarrow y$, where $m$ is neither $z$ nor any of $m$'s dependents is $z$.
+
+# d-separation: Alternative definitions
+
+* The two variables $x$ and $y$ are d-connected if there is *any* active path between them, and are d-separated if *all* paths that connect them are inactive.
+
+* A path between $x$ and $y$ is *blocked* by variable $z$ if any of the following hold:
+
+  1. $x$ and $y$ are connected by a chain in which $z$ is a middle node.
+  1. $x$ and $y$ are connected by a common cause, and $z$ is that common cause.
+  1. $x$ and $y$ are connected by a common effect (*collider*), but $z$ is not that common effect, and $z$ is not one of the effects of the common effect.
+
+# Deciding d-separation: Bayes ball
+
+* We can decide if $x$ and $y$ are d-separated by $z$ as follows:
+
+* Shade $z$ (or all nodes in $z$ if $z$ is a set).
+* Place a "ball" in $x$, let it "bounce around" and see if it reaches $y$.
+  1. The ball can pass through chain unless middle node is shaded.
+  2. The ball can pass through a fork unless shaded in middle.
+  3. The ball can *not* pass through collider unless middle node is shaded.
+  
+* If the ball can get from $x$ to $y$ then $x$ and $y$ are d-connected, otherwise they are d-separated.
+
+# Deciding d-separation: The "moral" and disoriented graph
+
+* Draw the ancestral graph consisting only of the relevant variables (e.g., $x$, $y$, $z$) and all of their *ancestors* (parents, parents’ parents, etc.)
+
+* *Moralize* the ancestral graph by *marrying* the parents. For each pair of variables with a common child, draw an *undirected* edge between them. If a variable has more than two parents, draw lines between every pair of parents.
+* *Disorient* the graph by replacing the directed edges with undirected edges.
+* Delete the *givens* and their edges, i.e. erase the conditioning variables from the graph and erase all of their connections.
+5. If the $x$ and $y$ variables are disconnected in this graph (no path between them), they are d-separated.
+
+# Example 
+
+\begin{center}
+  \begin{tikzpicture}
+  \tikzstyle{every path} = [-latex,thick]
+  \tikzstyle{every node} = [circle, fill=gray!30]
+    \node (a) at (1, 5) {$A$};
+    \node (b) at (3, 5) {$B$};
+    \node (c) at (2, 4) {$C$};
+    \node (d) at (1, 3) {$D$};
+    \node (e) at (3, 3) {$E$};
+    \node (f) at (2, 2) {$F$};
+    \node (g) at (1, 1) {$G$};
+  \draw (a) -- (c);
+  \draw (b) -- (c); 
+  \draw (c) -- (d); 
+  \draw (c) -- (e); 
+  \draw (d) -- (f);
+  \draw (f) -- (g);
+  \end{tikzpicture}
+\end{center}
+
+# d-separation queries
+
+1. $A \CI B \given D, F$ ?
+1. $A \CI B$ ?
+1. $A \CI B \given C$ ?
+1. $D \CI E \given C$ ?
+1. $D \CI E$ ?
+1. $D \CI E \given A, B$ ?
+1. $D \CI E \given C$?
+1. $D \CI G \given C$?
+
+
+# d-separation queries
+
+1. $A \CI B \given D, F$? No
+1. $A \CI B$? Yes
+1. $A \CI B \given C$? No
+1. $D \CI E \given C$? Yes
+1. $D \CI E$? No
+1. $D \CI E \given A, B$ No
+1. $D \CI E \given C$? Yes
+1. $D \CI G \given C$? No
+
+# Using `bnlearn`
+
+```{r, echo=T, message=F}
+library(bnlearn)
+bnet <- model2network("[a][b|f][c|e][e|a:b][f]")
+
+plot(bnet)
+
+
+```
+
+
+# Using `bnlearn`
+
+```{r, echo=T}
+# Is a d-separated from b given c?
+dsep(bnet, "a", "b", "c")
+
+# Is a d-sepated from b given f
+dsep(bnet, 'a', 'b', 'f')
+
+```
+
+# Using `bnlearn`
+```{r, echo=T}
+bnet <- model2network("[a][b][c|a:b][d|c][e|c][f|d][g|f]")
+
+plot(bnet)
+```
+
+
+# Using `bnlearn`
+```{r, echo=T}
+
+# a d-separated from e given {}
+dsep(bnet, 'd', 'e')
+
+# a d-separated from e given {a,b}
+dsep(bnet, 'd', 'e', c('a', 'b'))
+
+```
+
+
+
+
+
+# Using `bnlearn`
+```{r, echo=T}
+
+# d d-separated from e given c
+dsep(bnet, 'd', 'e', 'c')
+
+# a d-separated from e given {}
+dsep(bnet, 'd', 'e')
+
+# a d-separated from e given {a,b}
+dsep(bnet, 'd', 'e', c('a', 'b'))
+
+```
+
+# Using `daggity`
+
+```{r, echo=T, message =F}
+library(dagitty)
+g1 <- dagitty( "dag {
+    Y <- A
+    Y <- C
+    Y <- F <- T <- B
+    Y <- E <- D <- B
+    Y <- D <- B
+    C <- A
+    C <- B
+}")
+```
+
+# Using `daggity`
+
+
+```{r, echo=T}
+plot(graphLayout(g1))
+```
+
+# Using `dagitty`
+
+* The *basis set* of d-separations.
+
+```{r, echo=T}
+impliedConditionalIndependencies(g1, type = 'basis.set')
+```
+
