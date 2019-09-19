@@ -1,0 +1,175 @@
+---
+title: "Piecewise SEM"
+author: |
+  | Mark Andrews
+  | Psychology Department, Nottingham Trent University
+  | 
+  | \faEnvelopeO\  ```mark.andrews@ntu.ac.uk```
+fontsize: 10pt
+output:
+ beamer_presentation:
+  keep_tex: true
+  fonttheme: "serif"
+  includes:
+   in_header: preamble.tex
+---
+
+```{r setup, include=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = T, message = F, warning = F)
+library(tidyverse)
+library(magrittr)
+library(knitr)
+library(pander)
+
+theme_set(theme_classic())
+set.seed(101010)
+
+```
+
+# Some data
+
+```{r}
+
+N <- 100
+
+b_m0 <- 1.25; b_mx <- 1.25; 
+b_y0 <- -0.5; b_ym <- 1.75; b_yx <- 0.75;
+sigma_m <- 1.5; sigma_y <- 2.0
+
+mediation_df <- tibble(
+  x = rnorm(N, sd = 2),
+  m = b_m0 + b_mx * x + rnorm(N, sd = sigma_m),
+  y = b_y0 + b_ym * m + b_yx * x + rnorm(N, sd = sigma_y)
+)
+
+```
+
+# Set up model
+
+```{r}
+library(piecewiseSEM)
+
+# set up model
+M <- psem(lm(y ~ x + m, mediation_df), 
+          lm(m ~ x, mediation_df))
+
+```
+
+
+# Coefficients
+
+```{r}
+S <- summary(M)
+S$coefficients %>% select(Response, 
+                          Predictor, 
+                          Estimate, 
+                          Std.Error, 
+                          P.Value)
+```
+
+# AIC etc
+
+```{r}
+S$IC
+```
+
+# Using `glm`
+
+```{r}
+ilogit <- function(x) 1/(1 + exp(-x))
+rbern <- function(p) 1*(runif(length(p)) < p)
+
+N <- 100
+
+b_m0 <- 1.25; b_mx <- 1.25; 
+b_y0 <- -0.5; b_ym <- 1.75; b_yx <- 0.75;
+sigma_m <- 1.5; sigma_y <- 2.0
+
+mediation_df <- tibble(
+  x = rnorm(N, sd = 2),
+  m = b_m0 + b_mx * x + rnorm(N, sd = sigma_m),
+  y = rbern(ilogit(b_y0 + b_ym * m + b_yx * x ))
+)
+
+```
+
+# Using `glm`
+
+```{r}
+# set up model
+M <- psem(glm(y ~ x + m, mediation_df, 
+              family = binomial(link='logit')), 
+          lm(m ~ x, mediation_df))
+
+S <- summary(M)
+S$coefficients %>% select(Response, 
+                          Predictor, 
+                          Estimate, 
+                          Std.Error, 
+                          P.Value)
+
+```
+
+# Using `lmer`
+
+```{r}
+J <- 5
+N <- J * 100
+
+b_m0 <- 1.25; 
+z <- sample(seq(J), size = N, replace = T)
+b_mx <- rnorm(J, mean=2.25, sd = 0.1); 
+b_y0 <- -0.5; b_ym <- 1.75; 
+sigma_m <- 1.5; sigma_y <- 2.0
+
+mediation_df <- tibble(
+  z = z,
+  x = rnorm(N, sd = 2),
+  m = b_m0 + b_mx[z] * x + rnorm(N, sd = sigma_m),
+  y = b_y0 + b_ym * m + rnorm(N, sd = sigma_y)
+)
+
+```
+
+# Using `lmer`
+
+```{r, cache=T}
+library(lme4)
+# set up model
+M <- psem(lmer(m ~ x + (x|z), data=mediation_df), 
+          lm(y ~ m, mediation_df))
+
+S <- summary(M, .progressBar = F)
+S$coefficients %>% select(Response, 
+                          Predictor, 
+                          Estimate, 
+                          Std.Error, 
+                          P.Value)
+
+```
+
+# Using `brms`
+
+```{r, cache=T}
+N <- 100
+
+b_m0 <- 1.25; b_mx <- 1.25; 
+b_y0 <- -0.5; b_ym <- 1.75; b_yx <- 0.75;
+sigma_m <- 1.5; sigma_y <- 2.0
+
+mediation_df <- tibble(
+  x = rnorm(N, sd = 2),
+  m = b_m0 + b_mx * x + rnorm(N, sd = sigma_m),
+  y = rbern(ilogit(b_y0 + b_ym * m + b_yx * x ))
+)
+
+library(brms)
+
+y_model <- bf(y ~ x + m, family = bernoulli)
+m_model <- bf(m ~ x)
+
+M <- brm(y_model + m_model + set_rescor(FALSE),
+         data = mediation_df)
+
+```
+
