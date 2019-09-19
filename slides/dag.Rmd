@@ -28,10 +28,10 @@ set.seed(101010)
 
 # Causal \xdag
 
-* A causal \xdag is a \xdag: A graph with vertices representing variables, and directed edges between the vertices and contain no cycles.
-* It represents the causal relationships between variables: If one variable $x$ causes another $y$, we write $x \to y$.
+* A causal \xdag is a \xdag, which is a graph with vertices representing variables, and directed edges between the vertices, containing no cycles.
+* It represents the causal relationships between variables: If one variable $x$ directly causes another $y$, we write $x \to y$.
 * The absence of an direct edge between $x$ and $y$ indicates no *direct* effect of $x$ on $y$.
-* The absence of directed edg between variables is as or more informative than the presence of directed edge.
+* The absence of directed edg between variables is as or more informative than the presence of a directed edge.
 * A causal \xdag must have all relevant variables, all explanatory and outcome variables and *all their common causes*.
 
 # Causal \xdag
